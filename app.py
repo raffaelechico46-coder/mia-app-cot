@@ -14,13 +14,17 @@ def scarica_storico_cot():
     anni = [anno_corrente - 2, anno_corrente - 1, anno_corrente]
     lista_df = []
     
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
     for anno in anni:
         url = f"https://cftc.gov{anno}.zip"
         try:
-            response = requests.get(url, timeout=15)
+            response = requests.get(url, headers=headers, timeout=30)
             if response.status_code == 200:
                 with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                    nome_file = z.namelist()[0]
+                    nome_file = z.namelist()
                     with z.open(nome_file) as f:
                         df_temp = pd.read_csv(f, low_memory=False)
                         df_temp.columns = [c.strip() for c in df_temp.columns]
@@ -28,6 +32,9 @@ def scarica_storico_cot():
         except Exception:
             continue
             
+    if not lista_df:
+        raise ValueError("Impossibile scaricare i file dai server CFTC al momento. Riprova tra qualche secondo.")
+        
     df_completo = pd.concat(lista_df, ignore_index=True)
     df_completo['As of Date in Form YYYY-MM-DD'] = pd.to_datetime(df_completo['As of Date in Form YYYY-MM-DD'])
     df_completo = df_completo.sort_values('As of Date in Form YYYY-MM-DD').drop_duplicates(
